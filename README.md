@@ -1,1 +1,1 @@
-This project is about Apex Class Solutions
+This project is about Apex solutions.
