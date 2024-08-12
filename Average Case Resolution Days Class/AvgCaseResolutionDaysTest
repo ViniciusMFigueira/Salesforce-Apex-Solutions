@@ -1,0 +1,80 @@
+@isTest
+public class AvgCaseResolutionDaysTest {
+
+    @testSetup
+    static void setupTestData() {
+        // Create Test Accounts
+        List<Account> testAccounts = new List<Account>();
+        for (Integer i = 0; i < 3; i++) {
+            testAccounts.add(new Account(Name = 'Test Account ' + i));
+        }
+        insert testAccounts;
+
+        // Create Test Cases for Each Account
+        List<Case> testCases = new List<Case>();
+        for (Account acc : testAccounts) {
+            // Create 2 open cases for each account
+            testCases.add(new Case(AccountId = acc.Id, Status = 'New'));
+            testCases.add(new Case(AccountId = acc.Id, Status = 'New'));
+        }
+        insert testCases;
+
+        // Close cases to set ClosedDate
+        Test.startTest();
+        for (Case caseObj : testCases) {
+            caseObj.Status = 'Closed';
+            update caseObj;
+        }
+        Test.stopTest();
+    }
+
+    @isTest
+    static void testUpdateAvgCaseResolutionDays() {
+        // Query test accounts created in the setup
+        List<Account> testAccounts = [SELECT Id FROM Account];
+
+        // Get the list of account IDs
+        List<Id> accountIds = new List<Id>();
+        for (Account acc : testAccounts) {
+            accountIds.add(acc.Id);
+        }
+
+        // Call the method under test
+        Test.startTest();
+        AvgCaseResolutionDays.updateAvgCaseResolutionDays(accountIds);
+        Test.stopTest();
+
+        // Verify the results
+        List<Account> updatedAccounts = [SELECT Id, Avg_Case_Resolution_Days__c FROM Account];
+        for (Account acc : updatedAccounts) {
+            System.assertNotEquals(null, acc.Avg_Case_Resolution_Days__c, 'Avg_Case_Resolution_Days__c should not be null');
+            System.assert(acc.Avg_Case_Resolution_Days__c > 0, 'The average case resolution days should be greater than 0');
+        }
+    }
+
+    @isTest
+    static void testNoClosedCases() {
+        // Create an account without any closed cases
+        Account noCaseAccount = new Account(Name = 'No Case Account');
+        insert noCaseAccount;
+
+        // Call the method under test with the account that has no closed cases
+        Test.startTest();
+        AvgCaseResolutionDays.updateAvgCaseResolutionDays(new List<Id>{noCaseAccount.Id});
+        Test.stopTest();
+
+        // Verify the account is not updated with Avg_Case_Resolution_Days__c field
+        Account updatedAccount = [SELECT Id, Avg_Case_Resolution_Days__c FROM Account WHERE Id = :noCaseAccount.Id];
+        System.assertEquals(null, updatedAccount.Avg_Case_Resolution_Days__c, 'Avg_Case_Resolution_Days__c should be null because there are no closed cases');
+    }
+
+    @isTest
+    static void testEmptyAccountList() {
+        // Call the method under test with an empty list of account IDs
+        Test.startTest();
+        AvgCaseResolutionDays.updateAvgCaseResolutionDays(new List<Id>());
+        Test.stopTest();
+
+        // Since the list is empty, nothing should happen, and no errors should be thrown
+    }
+}
